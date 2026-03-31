@@ -31,6 +31,7 @@ class ExpenseListItem extends StatelessWidget {
     final subtitle = splitType == 'equal'
         ? 'Split equally'
         : 'Split by proportion';
+    final trimmedNote = (note ?? '').trim();
 
     return Hero(
       tag: heroTag,
@@ -93,10 +94,10 @@ class ExpenseListItem extends StatelessWidget {
                         subtitle,
                         style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                       ),
-                      if ((note ?? '').trim().isNotEmpty) ...[
+                      if (trimmedNote.isNotEmpty) ...[
                         SizedBox(height: AppSpacing.xs(context)),
                         Text(
-                          note!.trim(),
+                          trimmedNote,
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

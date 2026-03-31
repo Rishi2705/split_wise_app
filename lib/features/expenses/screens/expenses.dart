@@ -5,8 +5,10 @@ import 'package:split_wise_app/core/constants/app_colors.dart';
 import 'package:split_wise_app/core/constants/app_icons.dart';
 import 'package:split_wise_app/core/constants/app_spacing.dart';
 import 'package:split_wise_app/core/constants/strings.dart';
+import 'package:split_wise_app/core/widgets/common_app_bar.dart';
 import 'package:split_wise_app/core/widgets/common_text_form_field.dart';
 import 'package:split_wise_app/core/widgets/friend_contact_picker_sheet.dart';
+import 'package:split_wise_app/core/widgets/screen_loading_shimmer.dart';
 import 'package:split_wise_app/core/widgets/submit_button.dart';
 import 'package:split_wise_app/features/expenses/provider/expense_provider.dart';
 import 'package:split_wise_app/features/expenses/screens/expense_details_screen.dart';
@@ -52,6 +54,7 @@ class _ExpensesState extends State<Expenses> {
     return Consumer<ExpenseProvider>(
       builder: (context, provider, _) {
         return Scaffold(
+          appBar: const CommonAppBar(title: Strings.expensesTitle),
           body: SafeArea(
             child: Padding(
               padding: AppSpacing.screenPadding(context),
@@ -65,12 +68,17 @@ class _ExpensesState extends State<Expenses> {
                       stream: provider.watchExpenses(),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const ScreenLoadingShimmer();
                         }
 
                         final docs = snapshot.data?.docs ?? [];
                         final expenseDocs = docs
-                          .where((d) => (d.data()['type'] ?? Strings.expenseTypeLabel.toLowerCase()) == Strings.expenseTypeLabel.toLowerCase())
+                            .where(
+                              (d) =>
+                                  (d.data()['type'] ?? Strings.expenseTypeLabel.toLowerCase()) ==
+                                      Strings.expenseTypeLabel.toLowerCase() &&
+                                  d.data()['settled'] != true,
+                            )
                             .toList()
                           ..sort((a, b) {
                             final aAt = a.data()['createdAt'] as Timestamp?;
@@ -139,6 +147,7 @@ class _ExpensesState extends State<Expenses> {
           floatingActionButton: FloatingActionButton.extended(
             onPressed: provider.isBusy ? null : () => _showAddExpenseSheet(context),
             backgroundColor: AppColors.appColor,
+            foregroundColor: Colors.white,
             icon: const Icon(AppIcons.receiptLongIcon),
             label: const Text(Strings.addExpense),
           ),
@@ -148,20 +157,7 @@ class _ExpensesState extends State<Expenses> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(AppIcons.searchIcon, size: 22),
-        const Spacer(),
-        Text(
-          Strings.addFriends,
-          style: TextStyle(
-            color: AppColors.appColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
-        ),
-      ],
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _buildEmptyState(BuildContext context) {

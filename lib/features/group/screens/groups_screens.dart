@@ -5,8 +5,10 @@ import 'package:split_wise_app/core/constants/app_colors.dart';
 import 'package:split_wise_app/core/constants/app_icons.dart';
 import 'package:split_wise_app/core/constants/app_spacing.dart';
 import 'package:split_wise_app/core/constants/strings.dart';
+import 'package:split_wise_app/core/widgets/common_app_bar.dart';
 import 'package:split_wise_app/core/widgets/common_text_form_field.dart';
 import 'package:split_wise_app/core/widgets/friend_contact_picker_sheet.dart';
+import 'package:split_wise_app/core/widgets/screen_loading_shimmer.dart';
 import 'package:split_wise_app/core/widgets/submit_button.dart';
 import 'package:split_wise_app/features/group/provider/group_provider.dart';
 import 'package:split_wise_app/features/group/widgets/group_expense_tile.dart';
@@ -17,10 +19,7 @@ class GroupsScreens extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => GroupProvider()..init(),
-      child: const _GroupsView(),
-    );
+    return const _GroupsView();
   }
 }
 
@@ -32,17 +31,13 @@ class _GroupsView extends StatelessWidget {
     return Consumer<GroupProvider>(
       builder: (context, provider, _) {
         return Scaffold(
+          appBar: const CommonAppBar(title: Strings.groupsTitle),
           body: SafeArea(
             child: Padding(
               padding: AppSpacing.screenPadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    Strings.groupsTitle,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: AppSpacing.sm(context)),
                   Text(
                     Strings.groupsSubtitle,
                     style: TextStyle(color: Colors.grey.shade600),
@@ -52,8 +47,9 @@ class _GroupsView extends StatelessWidget {
                     child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                       stream: provider.watchGroups(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const ScreenLoadingShimmer();
                         }
 
                         final groups = snapshot.data?.docs.toList() ?? [];
@@ -71,19 +67,26 @@ class _GroupsView extends StatelessWidget {
 
                         return ListView.separated(
                           itemCount: groups.length,
-                          separatorBuilder: (_, __) => SizedBox(height: AppSpacing.md(context)),
+                          separatorBuilder: (_, __) =>
+                              SizedBox(height: AppSpacing.md(context)),
                           itemBuilder: (context, index) {
                             final data = groups[index].data();
                             final groupId = groups[index].id;
                             final memberPhones =
-                                (data['memberPhones'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+                                (data['memberPhones'] as List<dynamic>? ?? [])
+                                    .map((e) => e.toString())
+                                    .toList();
                             return GroupListTile(
-                              groupName: (data['name'] ?? Strings.defaultGroupName).toString(),
+                              groupName:
+                                  (data['name'] ?? Strings.defaultGroupName)
+                                      .toString(),
                               memberCount: memberPhones.length,
                               onTap: () => _showGroupDetails(
                                 context,
                                 groupId: groupId,
-                                groupName: (data['name'] ?? Strings.defaultGroupName).toString(),
+                                groupName:
+                                    (data['name'] ?? Strings.defaultGroupName)
+                                        .toString(),
                                 memberPhones: memberPhones,
                               ),
                             );
@@ -95,15 +98,21 @@ class _GroupsView extends StatelessWidget {
                   if ((provider.error ?? '').isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(top: AppSpacing.sm(context)),
-                      child: Text(provider.error ?? '', style: const TextStyle(color: Colors.red)),
+                      child: Text(
+                        provider.error ?? '',
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: provider.isBusy ? null : () => _showCreateGroupSheet(context),
+            onPressed: provider.isBusy
+                ? null
+                : () => _showCreateGroupSheet(context),
             backgroundColor: AppColors.appColor,
+            foregroundColor: Colors.white,
             icon: const Icon(AppIcons.groupAddIcon),
             label: const Text(Strings.createGroup),
           ),
@@ -155,7 +164,9 @@ class _GroupsView extends StatelessWidget {
                   left: AppSpacing.lg(context),
                   right: AppSpacing.lg(context),
                   top: AppSpacing.lg(context),
-                  bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg(context),
+                  bottom:
+                      MediaQuery.of(context).viewInsets.bottom +
+                      AppSpacing.lg(context),
                 ),
                 child: Form(
                   key: formKey,
@@ -165,7 +176,10 @@ class _GroupsView extends StatelessWidget {
                     children: [
                       const Text(
                         Strings.createGroupTitle,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       SizedBox(height: AppSpacing.md(context)),
                       CommonTextField(
@@ -192,15 +206,20 @@ class _GroupsView extends StatelessWidget {
                               watchFriends: provider.watchFriends,
                               loadContacts: provider.loadContacts,
                               contacts: () => provider.contacts,
-                              addFriendFromContact: provider.addFriendFromContact,
+                              addFriendFromContact:
+                                  provider.addFriendFromContact,
                               errorMessage: () => provider.error,
                               accentColor: AppColors.appColor,
                               emptyFriendsMessage: Strings.noFriendsYet,
                             );
 
                             if (!context.mounted || picked == null) return;
-                            final phone = (picked['friendPhone'] ?? '').toString();
-                            final name = (picked['friendName'] ?? Strings.defaultFriendName).toString();
+                            final phone = (picked['friendPhone'] ?? '')
+                                .toString();
+                            final name =
+                                (picked['friendName'] ??
+                                        Strings.defaultFriendName)
+                                    .toString();
                             if (phone.isEmpty) return;
 
                             setSheetState(() {
@@ -229,10 +248,13 @@ class _GroupsView extends StatelessWidget {
                             : ListView.separated(
                                 shrinkWrap: true,
                                 itemCount: selected.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final phone = selected.keys.elementAt(index);
-                                  final name = selected[phone] ?? Strings.defaultFriendName;
+                                  final name =
+                                      selected[phone] ??
+                                      Strings.defaultFriendName;
                                   return ListTile(
                                     dense: true,
                                     title: Text(name),
@@ -258,10 +280,19 @@ class _GroupsView extends StatelessWidget {
                             onPressed: provider.isBusy
                                 ? null
                                 : () async {
-                                    if (!(formKey.currentState?.validate() ?? false)) return;
+                                    if (!(formKey.currentState?.validate() ??
+                                        false))
+                                      return;
                                     if (selected.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text(Strings.pleaseSelectAtLeastOneMember)),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            Strings
+                                                .pleaseSelectAtLeastOneMember,
+                                          ),
+                                        ),
                                       );
                                       return;
                                     }
@@ -269,15 +300,27 @@ class _GroupsView extends StatelessWidget {
                                     final success = await provider.createGroup(
                                       groupName: nameController.text.trim(),
                                       selectedMembers: selected.entries
-                                          .map((e) => {'phone': e.key, 'name': e.value})
+                                          .map(
+                                            (e) => {
+                                              'phone': e.key,
+                                              'name': e.value,
+                                            },
+                                          )
                                           .toList(),
                                     );
                                     if (!context.mounted) return;
                                     if (success) {
                                       Navigator.pop(sheetContext);
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(provider.error ?? Strings.failedToCreateGroup)),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            provider.error ??
+                                                Strings.failedToCreateGroup,
+                                          ),
+                                        ),
                                       );
                                     }
                                   },
@@ -312,26 +355,31 @@ class _GroupsView extends StatelessWidget {
         return ChangeNotifierProvider.value(
           value: groupProvider,
           child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.86,
+            height: MediaQuery.of(sheetContext).size.height * 0.86,
             child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg(context)),
+              padding: EdgeInsets.all(AppSpacing.lg(sheetContext)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     groupName,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  SizedBox(height: AppSpacing.xs(context)),
+                  SizedBox(height: AppSpacing.xs(sheetContext)),
                   Text(
                     '${memberPhones.length} member${memberPhones.length == 1 ? '' : 's'}',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
-                  SizedBox(height: AppSpacing.md(context)),
+                  SizedBox(height: AppSpacing.md(sheetContext)),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: context.read<GroupProvider>().watchGroupExpenses(groupId),
-                      builder: (context, snapshot) {
+                      stream: sheetContext
+                          .read<GroupProvider>()
+                          .watchGroupExpenses(groupId),
+                      builder: (innerContext, snapshot) {
                         final docs = snapshot.data?.docs.toList() ?? [];
                         docs.sort((a, b) {
                           final aAt = a.data()['createdAt'] as Timestamp?;
@@ -350,12 +398,13 @@ class _GroupsView extends StatelessWidget {
                         return ListView.separated(
                           itemCount: docs.length,
                           separatorBuilder: (_, __) =>
-                              SizedBox(height: AppSpacing.md(context)),
-                          itemBuilder: (context, index) {
+                              SizedBox(height: AppSpacing.md(innerContext)),
+                          itemBuilder: (innerContext, index) {
                             final data = docs[index].data();
                             return GroupExpenseTile(
                               amount: (data['amount'] as num?)?.toDouble() ?? 0,
-                              splitType: (data['splitType'] ?? Strings.equal).toString(),
+                              splitType: (data['splitType'] ?? Strings.equal)
+                                  .toString(),
                               note: data['note']?.toString(),
                               createdAt: data['createdAt'] as Timestamp?,
                             );
@@ -364,11 +413,11 @@ class _GroupsView extends StatelessWidget {
                       },
                     ),
                   ),
-                  SizedBox(height: AppSpacing.md(context)),
+                  SizedBox(height: AppSpacing.md(sheetContext)),
                   SubmitButton(
                     text: Strings.addGroupExpense,
                     onPressed: () => _showAddGroupExpenseSheet(
-                      context,
+                      sheetContext,
                       groupId: groupId,
                       groupName: groupName,
                       memberPhones: memberPhones,
@@ -412,7 +461,9 @@ class _GroupsView extends StatelessWidget {
                   left: AppSpacing.lg(context),
                   right: AppSpacing.lg(context),
                   top: AppSpacing.lg(context),
-                  bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg(context),
+                  bottom:
+                      MediaQuery.of(context).viewInsets.bottom +
+                      AppSpacing.lg(context),
                 ),
                 child: Form(
                   key: formKey,
@@ -423,7 +474,10 @@ class _GroupsView extends StatelessWidget {
                       children: [
                         const Text(
                           Strings.addGroupExpenseTitle,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         SizedBox(height: AppSpacing.md(context)),
                         CommonTextField(
@@ -433,7 +487,8 @@ class _GroupsView extends StatelessWidget {
                           controller: amountController,
                           validator: (v) {
                             final parsed = double.tryParse((v ?? '').trim());
-                            if (parsed == null || parsed <= 0) return Strings.enterValidAmountSimple;
+                            if (parsed == null || parsed <= 0)
+                              return Strings.enterValidAmountSimple;
                             return null;
                           },
                         ),
@@ -449,7 +504,9 @@ class _GroupsView extends StatelessWidget {
                                 value: Strings.equal,
                                 groupValue: splitType,
                                 onChanged: (v) {
-                                  setSheetState(() => splitType = v ?? Strings.equal);
+                                  setSheetState(
+                                    () => splitType = v ?? Strings.equal,
+                                  );
                                 },
                               ),
                             ),
@@ -461,7 +518,9 @@ class _GroupsView extends StatelessWidget {
                                 value: Strings.proportions,
                                 groupValue: splitType,
                                 onChanged: (v) {
-                                  setSheetState(() => splitType = v ?? Strings.equal);
+                                  setSheetState(
+                                    () => splitType = v ?? Strings.equal,
+                                  );
                                 },
                               ),
                             ),
@@ -475,7 +534,9 @@ class _GroupsView extends StatelessWidget {
                             controller: creatorPercentController,
                             validator: (v) {
                               final parsed = double.tryParse((v ?? '').trim());
-                              if (parsed == null || parsed <= 0 || parsed >= 100) {
+                              if (parsed == null ||
+                                  parsed <= 0 ||
+                                  parsed >= 100) {
                                 return Strings.enterPercentOneToNinetyNine;
                               }
                               return null;
@@ -497,11 +558,19 @@ class _GroupsView extends StatelessWidget {
                               onPressed: provider.isBusy
                                   ? null
                                   : () async {
-                                      if (!(formKey.currentState?.validate() ?? false)) return;
-                                      final amount = double.parse(amountController.text.trim());
-                                      final double creatorPercent = splitType == Strings.equal
-                                        ? 0.0
-                                          : double.parse(creatorPercentController.text.trim());
+                                      if (!(formKey.currentState?.validate() ??
+                                          false))
+                                        return;
+                                      final amount = double.parse(
+                                        amountController.text.trim(),
+                                      );
+                                      final double creatorPercent =
+                                          splitType == Strings.equal
+                                          ? 0.0
+                                          : double.parse(
+                                              creatorPercentController.text
+                                                  .trim(),
+                                            );
 
                                       final ok = await provider.addGroupExpense(
                                         groupId: groupId,
@@ -519,8 +588,15 @@ class _GroupsView extends StatelessWidget {
                                       if (ok) {
                                         Navigator.pop(sheetContext);
                                       } else {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(provider.error ?? Strings.failedToAddExpense)),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              provider.error ??
+                                                  Strings.failedToAddExpense,
+                                            ),
+                                          ),
                                         );
                                       }
                                     },

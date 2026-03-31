@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:split_wise_app/core/constants/firestore_paths.dart';
+import 'package:split_wise_app/core/widgets/screen_loading_shimmer.dart';
 import 'package:split_wise_app/features/auth/screens/auth_screen.dart';
 import 'package:split_wise_app/features/auth/services/auth_services.dart';
 import 'package:split_wise_app/features/details/screens/user_details_screen.dart';
@@ -28,8 +29,8 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return const Scaffold(
+            body: Center(child: ScreenLoadingShimmer()),
           );
         }
 
@@ -43,7 +44,7 @@ class AuthWrapper extends StatelessWidget {
           builder: (context, profileSnapshot) {
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+                body: Center(child: ScreenLoadingShimmer()),
               );
             }
 

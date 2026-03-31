@@ -5,6 +5,8 @@ import 'package:split_wise_app/core/constants/app_icons.dart';
 import 'package:split_wise_app/core/constants/app_colors.dart';
 import 'package:split_wise_app/core/constants/app_spacing.dart';
 import 'package:split_wise_app/core/constants/strings.dart';
+import 'package:split_wise_app/core/widgets/common_app_bar.dart';
+import 'package:split_wise_app/core/widgets/screen_loading_shimmer.dart';
 import 'package:split_wise_app/features/activity_track/provider/activity_provider.dart';
 
 class ActivityScreen extends StatelessWidget {
@@ -12,32 +14,22 @@ class ActivityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ActivityProvider()..init(),
-      child: Consumer<ActivityProvider>(
-        builder: (context, provider, _) {
+    return Consumer<ActivityProvider>(
+      builder: (context, provider, _) {
           if (provider.isLoading && provider.currentUserPhone == null) {
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+              body: Center(child: ScreenLoadingShimmer()),
             );
           }
 
           return Scaffold(
+            appBar: const CommonAppBar(title: Strings.activityTitle),
             body: SafeArea(
               child: Padding(
                 padding: AppSpacing.screenPadding(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      Strings.activityTitle,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.sm(context)),
                     Text(
                       Strings.activitySubtitle,
                       style: TextStyle(
@@ -51,7 +43,7 @@ class ActivityScreen extends StatelessWidget {
                         stream: provider.watchTransactions(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                            return const ScreenLoadingShimmer();
                           }
 
                           final docs = snapshot.data?.docs ?? [];
@@ -94,7 +86,7 @@ class ActivityScreen extends StatelessWidget {
                       Padding(
                         padding: EdgeInsets.only(top: AppSpacing.sm(context)),
                         child: Text(
-                          provider.error!,
+                          provider.error ?? '',
                           style: const TextStyle(color: Colors.red),
                         ),
                       ),
@@ -103,8 +95,7 @@ class ActivityScreen extends StatelessWidget {
               ),
             ),
           );
-        },
-      ),
+      },
     );
   }
 
@@ -160,9 +151,12 @@ class _TransactionTile extends StatelessWidget {
         : (isCreatedByMe ? '-' : '+');
     final amountColor = signPrefix == '+' ? Colors.green : Colors.red;
 
-    final timestampText = createdAt == null
+    final createdDate = createdAt?.toDate();
+    final timestampText = createdDate == null
       ? Strings.justNow
-        : _formatDate(createdAt!.toDate());
+      : _formatDate(createdDate);
+
+    final trimmedNote = (note ?? '').trim();
 
     final subtitleParts = <String>[
       isExpense ? Strings.expenseTypeLabel : Strings.settlementTypeLabel,
@@ -206,7 +200,7 @@ class _TransactionTile extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.xs(context)),
                 Text(
-                  note?.trim().isNotEmpty == true ? note!.trim() : Strings.noNote,
+                  trimmedNote.isNotEmpty ? trimmedNote : Strings.noNote,
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

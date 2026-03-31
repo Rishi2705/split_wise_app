@@ -12,28 +12,6 @@ import '../../../core/constants/app_colors.dart';
 class BottomNavigationScreen extends StatelessWidget {
   const BottomNavigationScreen({super.key});
 
-  Widget _animatedBody(Widget body, int index) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 280),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        final offset = Tween<Offset>(
-          begin: const Offset(0.03, 0),
-          end: Offset.zero,
-        ).animate(animation);
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(position: offset, child: child),
-        );
-      },
-      child: KeyedSubtree(
-        key: ValueKey(index),
-        child: body,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
@@ -41,19 +19,19 @@ class BottomNavigationScreen extends StatelessWidget {
     return Consumer<BottomNavigationProvider>(
       builder: (context, bottomNavigationProviderModel, child) {
         final selectedIndex = bottomNavigationProviderModel.selectedIndex;
-        final selectedBody = bottomNavigationProviderModel.bottomItems.elementAt(selectedIndex);
+        final bottomItems = bottomNavigationProviderModel.bottomItems;
 
         if (isIOS) {
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(
-              middle: Text(Strings.appName),
-            ),
             child: SafeArea(
               bottom: false,
               child: Column(
                 children: [
                   Expanded(
-                    child: _animatedBody(selectedBody, selectedIndex),
+                    child: IndexedStack(
+                      index: selectedIndex,
+                      children: bottomItems,
+                    ),
                   ),
                   CupertinoTabBar(
                     currentIndex: selectedIndex,
@@ -86,7 +64,6 @@ class BottomNavigationScreen extends StatelessWidget {
         }
 
         return Scaffold(
-          appBar: CommonAppBar(title: Strings.appName.toString()),
           bottomNavigationBar: BottomNavigationBar(
             items: const [
               BottomNavigationBarItem(
@@ -111,7 +88,10 @@ class BottomNavigationScreen extends StatelessWidget {
             unselectedItemColor: AppColors.unselectedItemColor,
             onTap: bottomNavigationProviderModel.onItemTapped,
           ),
-          body: _animatedBody(selectedBody, selectedIndex),
+          body: IndexedStack(
+            index: selectedIndex,
+            children: bottomItems,
+          ),
         );
       },
     );

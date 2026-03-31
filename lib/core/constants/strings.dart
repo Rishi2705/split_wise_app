@@ -39,6 +39,7 @@ class Strings{
   static const addExpense = 'Add expense';
   static const addFriends = 'Add friends';
   static const noExpensesYet = 'No expenses yet';
+  static const expensesTitle = 'Expenses';
   static const addExpenseHint = 'Tap Add expense to create your first bill.';
   static const addBillToFriend = 'Add bill to friend';
   static const billAmountLabel = 'Bill Amount';
@@ -74,6 +75,7 @@ class Strings{
   static const alreadySettled = 'Already settled';
   static const settleUp = 'Settle up';
   static const expenseSettledSuccessfully = 'Expense settled successfully';
+  static const expenseSettledUpActivity = 'Expense settled up';
   static const failedToSettleExpense = 'Failed to settle expense';
 
   static const groupsTitle = 'Groups';

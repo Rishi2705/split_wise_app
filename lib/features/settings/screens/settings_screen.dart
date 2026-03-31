@@ -5,7 +5,9 @@ import 'package:split_wise_app/core/constants/app_colors.dart';
 import 'package:split_wise_app/core/constants/app_icons.dart';
 import 'package:split_wise_app/core/constants/app_spacing.dart';
 import 'package:split_wise_app/core/constants/strings.dart';
+import 'package:split_wise_app/core/widgets/common_app_bar.dart';
 import 'package:split_wise_app/core/widgets/common_text_form_field.dart';
+import 'package:split_wise_app/core/widgets/screen_loading_shimmer.dart';
 import 'package:split_wise_app/core/constants/app_route_constants.dart';
 import 'package:split_wise_app/core/Theme/theme_provider.dart';
 import 'package:split_wise_app/features/settings/provider/settings_provider.dart';
@@ -515,17 +517,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDarkMode = appThemeProvider.themeMode == ThemeMode.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        elevation: 0,
-        title: const Text(Strings.accountTitle),
-      ),
+      appBar: const CommonAppBar(title: Strings.accountTitle),
       body: Consumer<SettingsProvider>(
         builder: (context, settingsProvider, _) {
           if (settingsProvider.isLoading &&
               settingsProvider.userData == null) {
             return const Center(
-              child: CircularProgressIndicator(),
+              child: ScreenLoadingShimmer(),
             );
           }
 

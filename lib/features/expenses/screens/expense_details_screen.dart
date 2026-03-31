@@ -38,6 +38,7 @@ class ExpenseDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = createdAt?.toDate();
+    final trimmedNote = (note ?? '').trim();
     final dateText = date == null
         ? Strings.justNow
         : '${date.day.toString().padLeft(2, '0')}/'
@@ -116,7 +117,7 @@ class ExpenseDetailsScreen extends StatelessWidget {
                 Text('${Strings.statusLabel}: ${settled ? Strings.settledStatus : Strings.pendingStatus}'),
                 SizedBox(height: AppSpacing.md(context)),
                 Text(
-                  (note ?? '').trim().isEmpty ? Strings.noNoteAdded : note!.trim(),
+                  trimmedNote.isEmpty ? Strings.noNoteAdded : trimmedNote,
                   style: TextStyle(color: Colors.grey.shade700),
                 ),
                 const Spacer(),

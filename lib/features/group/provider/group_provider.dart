@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'dart:async';
 import 'package:split_wise_app/core/constants/firestore_paths.dart';
 import 'package:split_wise_app/features/expenses/services/friends_firestore_services.dart';
 import 'package:split_wise_app/features/group/services/groups_firestore_services.dart';
@@ -16,6 +17,7 @@ class GroupProvider extends ChangeNotifier {
   String? _currentUserPhone;
   String _currentUserName = 'You';
   List<Contact> _contacts = const [];
+  StreamSubscription<User?>? _authSub;
 
   bool get isBusy => _isBusy;
   String? get error => _error;
@@ -23,18 +25,40 @@ class GroupProvider extends ChangeNotifier {
   String get currentUserName => _currentUserName;
   List<Contact> get contacts => _contacts;
 
+  GroupProvider() {
+    _bindAuthState();
+  }
+
+  void _bindAuthState() {
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user == null) {
+        _currentUserPhone = null;
+        _currentUserName = 'You';
+        _contacts = const [];
+        _error = null;
+        _isBusy = false;
+        notifyListeners();
+        return;
+      }
+
+      _currentUserPhone = null;
+      await init();
+    });
+  }
+
   Future<void> init() async {
     if (_currentUserPhone != null) return;
     _setBusy(true);
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user?.email == null) {
+      final userEmail = user?.email;
+      if (userEmail == null) {
         throw Exception('Current user email not found');
       }
 
       final snapshot = await _db
           .collection(FirestorePaths.users)
-          .where('email', isEqualTo: user!.email)
+          .where('email', isEqualTo: userEmail)
           .limit(1)
           .get();
 
@@ -53,13 +77,15 @@ class GroupProvider extends ChangeNotifier {
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> watchGroups() {
-    if (_currentUserPhone == null) return const Stream.empty();
-    return _groupsService.watchGroupsForUser(_currentUserPhone!);
+    final currentUserPhone = _currentUserPhone;
+    if (currentUserPhone == null) return const Stream.empty();
+    return _groupsService.watchGroupsForUser(currentUserPhone);
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> watchFriends() {
-    if (_currentUserPhone == null) return const Stream.empty();
-    return _friendsService.watchFriends(_currentUserPhone!);
+    final currentUserPhone = _currentUserPhone;
+    if (currentUserPhone == null) return const Stream.empty();
+    return _friendsService.watchFriends(currentUserPhone);
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> watchGroupExpenses(String groupId) {
@@ -90,7 +116,8 @@ class GroupProvider extends ChangeNotifier {
   }
 
   Future<bool> addFriendFromContact(Contact contact) async {
-    if (_currentUserPhone == null) return false;
+    final currentUserPhone = _currentUserPhone;
+    if (currentUserPhone == null) return false;
     final number = contact.phones.isNotEmpty
         ? contact.phones.first.number.replaceAll(RegExp(r'\s+'), '')
         : '';
@@ -102,7 +129,7 @@ class GroupProvider extends ChangeNotifier {
 
     try {
       await _friendsService.addFriend(
-        userPhone: _currentUserPhone!,
+        userPhone: currentUserPhone,
         friendPhone: number,
         friendName: contact.displayName,
       );
@@ -120,7 +147,8 @@ class GroupProvider extends ChangeNotifier {
     required String groupName,
     required List<Map<String, String>> selectedMembers,
   }) async {
-    if (_currentUserPhone == null) {
+    final currentUserPhone = _currentUserPhone;
+    if (currentUserPhone == null) {
       _error = 'User not initialized';
       notifyListeners();
       return false;
@@ -130,14 +158,14 @@ class GroupProvider extends ChangeNotifier {
     try {
       final members = <Map<String, String>>[
         {
-          'phone': _currentUserPhone!,
+          'phone': currentUserPhone,
           'name': _currentUserName,
         },
         ...selectedMembers
             .where(
               (m) =>
                   (m['phone'] ?? '').trim().isNotEmpty &&
-                  (m['phone'] ?? '').trim() != _currentUserPhone,
+                  (m['phone'] ?? '').trim() != currentUserPhone,
             )
             .map(
               (m) => {
@@ -161,7 +189,7 @@ class GroupProvider extends ChangeNotifier {
 
       final groupId = await _groupsService.createGroup(
         name: groupName,
-        createdBy: _currentUserPhone!,
+        createdBy: currentUserPhone,
         memberPhones: memberPhones,
       );
 
@@ -194,7 +222,8 @@ class GroupProvider extends ChangeNotifier {
     required double creatorPercent,
     String? note,
   }) async {
-    if (_currentUserPhone == null) {
+    final currentUserPhone = _currentUserPhone;
+    if (currentUserPhone == null) {
       _error = 'User not initialized';
       notifyListeners();
       return false;
@@ -216,14 +245,14 @@ class GroupProvider extends ChangeNotifier {
         if (creatorPercent <= 0 || creatorPercent >= 100) {
           throw Exception('Creator percent must be between 1 and 99');
         }
-        final others = memberPhones.where((p) => p != _currentUserPhone).toList();
+        final others = memberPhones.where((p) => p != currentUserPhone).toList();
         if (others.isEmpty) {
-          shares[_currentUserPhone!] = amount;
+          shares[currentUserPhone] = amount;
         } else {
           final creatorShare = amount * (creatorPercent / 100);
           final remainingShare = amount - creatorShare;
           final eachOther = remainingShare / others.length;
-          shares[_currentUserPhone!] = creatorShare;
+          shares[currentUserPhone] = creatorShare;
           for (final p in others) {
             shares[p] = eachOther;
           }
@@ -231,7 +260,7 @@ class GroupProvider extends ChangeNotifier {
       }
 
       await _db.collection(FirestorePaths.transactions).add({
-        'createdBy': _currentUserPhone,
+        'createdBy': currentUserPhone,
         'participants': memberPhones,
         'amount': amount,
         'type': 'expense',
@@ -264,5 +293,11 @@ class GroupProvider extends ChangeNotifier {
   void _setBusy(bool value) {
     _isBusy = value;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 }

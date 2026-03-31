@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:split_wise_app/core/constants/firestore_paths.dart';
+import 'package:split_wise_app/core/constants/strings.dart';
 
 class ExpensesFirestoreServices {
   final _db = FirebaseFirestore.instance;
@@ -44,10 +45,48 @@ class ExpensesFirestoreServices {
   }
 
   Future<void> settleExpense({required String transactionId}) async {
-    await txCol.doc(transactionId).update({
+    final expenseRef = txCol.doc(transactionId);
+    final expenseSnapshot = await expenseRef.get();
+
+    if (!expenseSnapshot.exists) {
+      throw Exception('Expense transaction not found');
+    }
+
+    final expenseData = expenseSnapshot.data() ?? <String, dynamic>{};
+    if (expenseData['settled'] == true) {
+      return;
+    }
+
+    final rawParticipants = (expenseData['participants'] as List<dynamic>? ?? const []);
+    final participants = rawParticipants.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    final createdBy = (expenseData['createdBy'] ?? '').toString();
+    if (participants.isEmpty && createdBy.isNotEmpty) {
+      participants.add(createdBy);
+    }
+
+    final amount = (expenseData['amount'] as num?)?.toDouble() ?? 0;
+    final settlementRef = txCol.doc();
+    final batch = _db.batch();
+
+    batch.update(expenseRef, {
       'settled': true,
       'settledAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    batch.set(settlementRef, {
+      'createdBy': createdBy,
+      'participants': participants,
+      'friendPhone': expenseData['friendPhone'],
+      'friendName': expenseData['friendName'],
+      'amount': amount,
+      'type': Strings.settlementTypeLabel.toLowerCase(),
+      'note': Strings.expenseSettledUpActivity,
+      'sourceTransactionId': transactionId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
   }
 }

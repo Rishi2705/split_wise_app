@@ -5,8 +5,10 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:split_wise_app/core/constants/app_colors.dart';
 import 'package:split_wise_app/features/auth/provider/auth_provider.dart';
+import 'package:split_wise_app/features/activity_track/provider/activity_provider.dart';
 import 'package:split_wise_app/features/bottom_nav/provider/bottom_navigation_provider.dart';
 import 'package:split_wise_app/features/expenses/provider/expense_provider.dart';
+import 'package:split_wise_app/features/group/provider/group_provider.dart';
 import 'package:split_wise_app/features/settings/provider/settings_provider.dart';
 import 'package:split_wise_app/core/constants/app_route_config.dart';
 import 'package:split_wise_app/core/Theme/theme_provider.dart';
@@ -45,6 +47,8 @@ class _MyAppState extends State<MyApp> {
           create: (context) => BottomNavigationProvider(),
         ),
         ChangeNotifierProvider(create: (context) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (context) => GroupProvider()),
+        ChangeNotifierProvider(create: (context) => ActivityProvider()),
         ChangeNotifierProvider(create: (context) => AppThemeProvider()),
         ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => SettingsProvider()),

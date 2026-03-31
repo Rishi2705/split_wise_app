@@ -24,7 +24,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
     final appBarTheme = context.watch<AppThemeProvider>().appBarTheme;
 
     return AppBar(
-      title: Text(title,style: Theme.of(context).textTheme.titleLarge,),
+      title: Text(title),
       centerTitle: centerTitle,
       leading: leading != null
           ? Padding(

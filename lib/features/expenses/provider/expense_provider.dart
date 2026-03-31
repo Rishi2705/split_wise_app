@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'dart:async';
 import 'package:split_wise_app/core/constants/firestore_paths.dart';
 import 'package:split_wise_app/features/expenses/services/expenses_firestore_services.dart';
 import 'package:split_wise_app/features/expenses/services/friends_firestore_services.dart';
@@ -15,24 +16,46 @@ class ExpenseProvider extends ChangeNotifier {
 	String? _error;
 	String? _currentUserPhone;
 	List<Contact> _contacts = const [];
+	StreamSubscription<User?>? _authSub;
 
 	bool get isBusy => _isBusy;
 	String? get error => _error;
 	String? get currentUserPhone => _currentUserPhone;
 	List<Contact> get contacts => _contacts;
 
+	ExpenseProvider() {
+		_bindAuthState();
+	}
+
+	void _bindAuthState() {
+		_authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+			if (user == null) {
+				_currentUserPhone = null;
+				_contacts = const [];
+				_error = null;
+				_isBusy = false;
+				notifyListeners();
+				return;
+			}
+
+			_currentUserPhone = null;
+			await init();
+		});
+	}
+
 	Future<void> init() async {
 		if (_currentUserPhone != null) return;
 		_setBusy(true);
 		try {
 			final user = FirebaseAuth.instance.currentUser;
-			if (user?.email == null) {
+			final userEmail = user?.email;
+			if (userEmail == null) {
 				throw Exception('Current user email is missing');
 			}
 
 			final snapshot = await _db
 					.collection(FirestorePaths.users)
-					.where('email', isEqualTo: user!.email)
+					.where('email', isEqualTo: userEmail)
 					.limit(1)
 					.get();
 
@@ -50,17 +73,19 @@ class ExpenseProvider extends ChangeNotifier {
 	}
 
 	Stream<QuerySnapshot<Map<String, dynamic>>> watchFriends() {
-		if (_currentUserPhone == null) {
+		final currentUserPhone = _currentUserPhone;
+		if (currentUserPhone == null) {
 			return const Stream.empty();
 		}
-		return _friendsService.watchFriends(_currentUserPhone!);
+		return _friendsService.watchFriends(currentUserPhone);
 	}
 
 	Stream<QuerySnapshot<Map<String, dynamic>>> watchExpenses() {
-		if (_currentUserPhone == null) {
+		final currentUserPhone = _currentUserPhone;
+		if (currentUserPhone == null) {
 			return const Stream.empty();
 		}
-		return _expensesService.watchCurrentUserExpenses(_currentUserPhone!);
+		return _expensesService.watchCurrentUserExpenses(currentUserPhone);
 	}
 
 	Future<bool> loadContacts() async {
@@ -92,7 +117,8 @@ class ExpenseProvider extends ChangeNotifier {
 		required double friendShare,
 		String? note,
 	}) async {
-		if (_currentUserPhone == null) {
+		final currentUserPhone = _currentUserPhone;
+		if (currentUserPhone == null) {
 			_error = 'User is not initialized yet';
 			notifyListeners();
 			return false;
@@ -101,13 +127,13 @@ class ExpenseProvider extends ChangeNotifier {
 		_setBusy(true);
 		try {
 			await _friendsService.addFriend(
-				userPhone: _currentUserPhone!,
+				userPhone: currentUserPhone,
 				friendPhone: friendPhone,
 				friendName: friendName,
 			);
 
 			await _expensesService.createExpense(
-				createdBy: _currentUserPhone!,
+				createdBy: currentUserPhone,
 				friendPhone: friendPhone,
 				friendName: friendName,
 				amount: amount,
@@ -119,7 +145,7 @@ class ExpenseProvider extends ChangeNotifier {
 
 			final netFriendOwes = friendShare - payerShare;
 			await _friendsService.updateFriend(
-				userPhone: _currentUserPhone!,
+				userPhone: currentUserPhone,
 				friendPhone: friendPhone,
 				patch: {'balanceWithFriend': netFriendOwes},
 			);
@@ -135,7 +161,8 @@ class ExpenseProvider extends ChangeNotifier {
 	}
 
 	Future<bool> addFriendFromContact(Contact contact) async {
-		if (_currentUserPhone == null) return false;
+		final currentUserPhone = _currentUserPhone;
+		if (currentUserPhone == null) return false;
 		final number = contact.phones.isNotEmpty
 				? contact.phones.first.number.replaceAll(RegExp(r'\s+'), '')
 				: '';
@@ -147,7 +174,7 @@ class ExpenseProvider extends ChangeNotifier {
 
 		try {
 			await _friendsService.addFriend(
-				userPhone: _currentUserPhone!,
+				userPhone: currentUserPhone,
 				friendPhone: number,
 				friendName: contact.displayName,
 			);
@@ -183,5 +210,11 @@ class ExpenseProvider extends ChangeNotifier {
 	void _setBusy(bool value) {
 		_isBusy = value;
 		notifyListeners();
+	}
+
+	@override
+	void dispose() {
+		_authSub?.cancel();
+		super.dispose();
 	}
 }

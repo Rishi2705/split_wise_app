@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:split_wise_app/features/auth/services/auth_services.dart';
@@ -20,6 +21,7 @@ class SettingsProvider extends ChangeNotifier {
   String? _userPhone;
   String? _errorMessage;
   bool _isUploadingImage = false;
+  StreamSubscription<User?>? _authSub;
 
   bool get isLoading => _isLoading;
   bool get isUploadingImage => _isUploadingImage;
@@ -28,26 +30,55 @@ class SettingsProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   SettingsProvider() {
-    _initializeData();
+    _bindAuthState();
+  }
+
+  void _bindAuthState() {
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user == null) {
+        _currentUser = null;
+        _userData = null;
+        _userPhone = null;
+        _errorMessage = null;
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      await _initializeData();
+    });
   }
 
   Future<void> _initializeData() async {
+    _isLoading = true;
+    notifyListeners();
+
     _currentUser = FirebaseAuth.instance.currentUser;
+    _userPhone = null;
+    _userData = null;
+    _errorMessage = null;
+
     if (_currentUser != null) {
       await _findUserPhoneByEmail();
       if (_userPhone != null) {
         await fetchUserData();
+      } else {
+        _errorMessage = 'User phone not found';
       }
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> _findUserPhoneByEmail() async {
     try {
-      if (_currentUser?.email == null) return;
+      final email = _currentUser?.email;
+      if (email == null) return;
       
       final snapshot = await _db
           .collection(FirestorePaths.users)
-          .where('email', isEqualTo: _currentUser!.email)
+          .where('email', isEqualTo: email)
           .limit(1)
           .get();
 
@@ -70,7 +101,13 @@ class SettingsProvider extends ChangeNotifier {
         return;
       }
 
-      final userData = await _userService.getUser(_userPhone!);
+      final phone = _userPhone;
+      if (phone == null) {
+        _errorMessage = 'User phone not found';
+        return;
+      }
+
+      final userData = await _userService.getUser(phone);
       
       if (userData != null) {
         _userData = userData;
@@ -106,12 +143,13 @@ class SettingsProvider extends ChangeNotifier {
       // Convert to base64
       final base64Image = base64Encode(bytes);
 
-      if (_userPhone == null) {
+      final phone = _userPhone;
+      if (phone == null) {
         throw Exception('User phone not found');
       }
 
       // Update Firestore
-      await _userService.updateUser(_userPhone!, {
+      await _userService.updateUser(phone, {
         'photoUrl': 'data:image/jpeg;base64,$base64Image',
       });
 
@@ -137,7 +175,8 @@ class SettingsProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      if (_userPhone == null) {
+      final phone = _userPhone;
+      if (phone == null) {
         throw Exception('User phone not found');
       }
       
@@ -151,7 +190,7 @@ class SettingsProvider extends ChangeNotifier {
       }
 
       // Update Firestore
-      await _userService.updateUser(_userPhone!, updateMap);
+      await _userService.updateUser(phone, updateMap);
 
       // Update Firebase Auth email if changed
       if (email != null && _currentUser?.email != email) {
@@ -180,11 +219,12 @@ class SettingsProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      if (_currentUser == null) {
+      final currentUser = _currentUser;
+      if (currentUser == null) {
         throw Exception('User not authenticated');
       }
 
-      final email = _currentUser?.email;
+      final email = currentUser.email;
       if (email == null || email.isEmpty) {
         throw Exception('Unable to verify account email');
       }
@@ -194,10 +234,10 @@ class SettingsProvider extends ChangeNotifier {
         email: email,
         password: oldPassword,
       );
-      await _currentUser!.reauthenticateWithCredential(credential);
+      await currentUser.reauthenticateWithCredential(credential);
 
       // Update password in Firebase Auth
-      await _currentUser!.updatePassword(newPassword);
+      await currentUser.updatePassword(newPassword);
       
       return true;
     } on FirebaseAuthException catch (e) {
@@ -244,12 +284,13 @@ class SettingsProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      if (_userPhone == null) {
+      final phone = _userPhone;
+      if (phone == null) {
         throw Exception('User phone not found');
       }
 
       // Delete from Firestore
-      await _userService.deleteUser(_userPhone!);
+      await _userService.deleteUser(phone);
 
       // Delete Firebase Auth user
       await _currentUser?.delete();
@@ -273,5 +314,11 @@ class SettingsProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 }
